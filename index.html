@@ -49,7 +49,8 @@
     #app { height:100dvh; grid-template-columns:1fr; grid-template-rows:minmax(360px, 56dvh) minmax(0, 1fr); grid-template-areas:"map" "sidebar"; }
     main { grid-area:map; min-height:0; }
     #sidebar { grid-area:sidebar; border-right:0; border-top:1px solid #e5e7eb; border-bottom:0; }
-    .header { padding:14px 14px 11px; }
+    /* 手机端让标题与日期栏随行程内容一起滚动，避免长期遮挡每日详情。 */
+    .header { position:static; padding:14px 14px 11px; }
     h1 { font-size:19px; }
     .day-tabs { margin-top:10px; gap:7px; padding-bottom:4px; }
     .day-tabs button { min-height:44px; padding:9px 13px; font-size:13px; }
