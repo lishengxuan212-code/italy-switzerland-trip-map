@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>团队意大利・瑞士行程交互地图</title>
+<link rel="preconnect" href="https://unpkg.com">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin:0; height:100%; font-family: -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",Arial,sans-serif; color:#1f2937; background:#f5f7fa; }
+  #app { display:grid; grid-template-columns: 390px 1fr; height:100%; }
+  #sidebar { background:#fff; border-right:1px solid #e5e7eb; overflow:auto; position:relative; z-index:1000; }
+  #map { height:100%; width:100%; }
+  .header { padding:20px 18px 14px; position:sticky; top:0; background:rgba(255,255,255,.96); backdrop-filter: blur(10px); z-index:4; border-bottom:1px solid #eef0f3; }
+  h1 { margin:0 0 6px; font-size:22px; line-height:1.25; }
+  .sub { font-size:12px; color:#6b7280; line-height:1.55; }
+  .day-tabs { display:flex; gap:6px; margin-top:14px; padding-bottom:2px; overflow-x:auto; scrollbar-width:thin; }
+  .day-tabs button { flex:0 0 auto; border:1px solid #d1d5db; background:#fff; border-radius:999px; padding:7px 11px; cursor:pointer; font-size:12px; color:#4b5563; transition:background .18s ease,color .18s ease,border-color .18s ease,transform .18s ease; }
+  .day-tabs button:hover { background:#f3f4f6; transform:translateY(-1px); }
+  .day-tabs button.active { background:#1f2937; color:#fff; border-color:#1f2937; }
+  .day { border-bottom:1px solid #eef0f3; padding:14px 16px; }
+  .day-title { display:flex; align-items:flex-start; gap:9px; cursor:pointer; }
+  .chip { color:#fff; font-weight:700; padding:4px 7px; border-radius:7px; font-size:12px; min-width:42px; text-align:center; }
+  .date { font-size:11px; color:#6b7280; margin-bottom:2px; }
+  .name { font-weight:700; font-size:14px; line-height:1.35; }
+  .meta { margin:8px 0 0 51px; font-size:12px; color:#4b5563; line-height:1.55; }
+  .stay { margin-top:5px; font-weight:600; }
+  .details { margin:9px 0 0 51px; display:none; font-size:12px; }
+  .day.open .details { display:block; }
+  .stop { border-left:2px solid #e5e7eb; padding:0 0 9px 10px; position:relative; }
+  .stop::before { content:""; width:7px; height:7px; border-radius:50%; background:#9ca3af; position:absolute; left:-4.5px; top:5px; }
+  .stop b { font-size:12px; }
+  .stop small { display:block; color:#6b7280; margin-top:2px; line-height:1.45; }
+  .note { background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:8px; margin-top:4px; line-height:1.5; }
+  .legend { position:absolute; right:14px; bottom:18px; z-index:500; background:rgba(255,255,255,.94); border:1px solid #e5e7eb; box-shadow:0 6px 20px rgba(0,0,0,.08); border-radius:10px; padding:10px 12px; font-size:12px; max-width:250px; }
+  .legend div { margin:4px 0; }
+  .dot { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; vertical-align:-1px; }
+  .hotelIcon { background:#111827; color:#fff; width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-weight:700; border:2px solid #fff; box-shadow:0 1px 5px rgba(0,0,0,.35); }
+  .numberIcon { color:#fff; width:27px; height:27px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:11px; border:2px solid #fff; box-shadow:0 1px 5px rgba(0,0,0,.35); }
+  .spot-tooltip { background:#111827; border:0; border-radius:6px; color:#fff; box-shadow:0 3px 12px rgba(0,0,0,.2); font-size:12px; font-weight:600; padding:5px 8px; white-space:nowrap; pointer-events:none; }
+  .spot-tooltip::before { border-top-color:#111827; }
+  .popup h3 { margin:0 0 5px; font-size:14px; }
+  .popup .tag { display:inline-block; font-size:10px; padding:2px 6px; border-radius:999px; background:#eef2f7; margin-bottom:5px; }
+  .popup p { margin:3px 0; font-size:12px; line-height:1.45; }
+  .popup a { color:#2563eb; text-decoration:none; }
+  .notice { margin:12px 16px 16px; padding:10px 12px; background:#fff8e7; border:1px solid #f4d58d; border-radius:9px; font-size:12px; line-height:1.55; color:#6b4f00; }
+  @media (max-width: 820px) {
+    #app { height:100dvh; grid-template-columns:1fr; grid-template-rows:minmax(360px, 56dvh) minmax(0, 1fr); grid-template-areas:"map" "sidebar"; }
+    main { grid-area:map; min-height:0; }
+    #sidebar { grid-area:sidebar; border-right:0; border-top:1px solid #e5e7eb; border-bottom:0; }
+    .header { padding:14px 14px 11px; }
+    h1 { font-size:19px; }
+    .day-tabs { margin-top:10px; gap:7px; padding-bottom:4px; }
+    .day-tabs button { min-height:44px; padding:9px 13px; font-size:13px; }
+    .day { padding:13px 14px; }
+    .legend { right:10px; bottom:10px; max-width:175px; padding:7px 9px; font-size:11px; }
+    .legend div:last-child { display:none; }
+    .spot-tooltip { max-width:132px; padding:4px 6px; font-size:11px; line-height:1.25; white-space:normal; text-align:center; }
+  }
+  @media (max-width: 420px) {
+    #app { grid-template-rows:minmax(340px, 54dvh) minmax(0, 1fr); }
+    .sub { font-size:11px; }
+    .spot-tooltip { max-width:112px; font-size:10px; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <aside id="sidebar">
+    <div class="header">
+      <h1>意大利・瑞士团队行程地图</h1>
+      <div class="sub">9/4–9/13｜选择日期仅查看当天线路；轻触点位可查看景点、交通与住宿详情。</div>
+      <div class="day-tabs" id="day-tabs" aria-label="按日期筛选地图">
+        <button type="button" class="active" data-day="all" onclick="showAll()">全部</button>
+      </div>
+    </div>
+    <div id="days"></div>
+    <div class="notice">
+      <b>住宿已更新：</b>9/4 罗马 Universo；9/5 Via di Collazzi 78（蒙特普尔恰诺）；9/6–9/7 Wine Apartments Florence Bolgheri；9/8 Campanile Venice Mestre；9/9–9/11 Marktgasse 66 / CityChalet；9/12 Hilton Rome Airport。<br><br><b>仍待补充：</b>9/5 葡萄酒庄园名称/地址，以及“Z弯丝柏公路”的具体收藏点。<br><br>
+      <b>线路说明：</b>彩色线用于表达“当天访问顺序”，不是实时道路/铁路导航轨迹；威尼斯水上段、跨国火车段尤其如此。
+    </div>
+  </aside>
+  <main style="position:relative">
+    <div id="map"></div>
+    <div class="legend">
+      <div><span class="dot" style="background:#111827"></span>住宿</div>
+      <div><span class="dot" style="background:#6b7280"></span>景点 / 交通点</div>
+      <div>选择日期可聚焦当天线路</div>
+    </div>
+  </main>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const DATA = [{"id": "D1", "date": "9/4", "title": "罗马｜抵达 + 古城核心", "mode": "接机 / 步行 / 市内交通", "stay": "Best Western Plus Hotel Universo（环球贝斯特韦斯特优质酒店）", "stay_note": "Via Principe Amedeo 5/B, 00185 Roma", "points": [{"name": "罗马菲乌米奇诺机场 FCO", "lat": 41.8003, "lng": 12.2389, "type": "交通", "info": "07:00 抵达；前往酒店。"}, {"name": "Best Western Plus Hotel Universo", "lat": 41.90028, "lng": 12.498305, "type": "住宿", "info": "9/4 住宿｜Via Principe Amedeo 5/B, 00185 Roma。"}, {"name": "斗兽场 Colosseo", "lat": 41.8902, "lng": 12.4922, "type": "景点", "info": "罗马经典古迹。"}, {"name": "许愿池 Fontana di Trevi", "lat": 41.9009, "lng": 12.4833, "type": "景点", "info": "罗马市中心经典景点。"}, {"name": "梵蒂冈博物馆 Musei Vaticani", "lat": 41.9065, "lng": 12.4536, "type": "景点", "info": "计划 15:00 入场；含西斯廷礼拜堂。"}, {"name": "西斯廷礼拜堂 Cappella Sistina", "lat": 41.9029, "lng": 12.4545, "type": "景点", "info": "位于梵蒂冈博物馆参观线路内。"}], "order_note": "建议：机场 → 酒店放行李 → 斗兽场 → 许愿池 → 梵蒂冈博物馆/西斯廷礼拜堂。实际需结合15:00预约时间微调。"}, {"id": "D2", "date": "9/5", "title": "罗马 → 托斯卡纳 / 皮恩扎 → 蒙特普尔恰诺", "mode": "自驾", "stay": "蒙特普尔恰诺小镇民宿", "stay_note": "Via di Collazzi 78, 53045 Montepulciano", "points": [{"name": "Best Western Plus Hotel Universo", "lat": 41.90028, "lng": 12.498305, "type": "出发", "info": "从罗马出发。"}, {"name": "皮恩扎 Pienza / Piazza Pio II", "lat": 43.0776, "lng": 11.6781, "type": "景点", "info": "皮恩扎核心；大教堂广场、老城、城墙观景。"}, {"name": "Madonna di Vitaleta 小教堂", "lat": 43.0712, "lng": 11.6367, "type": "景点", "info": "行程中的“小耳朵教堂”；托斯卡纳经典田园机位。"}, {"name": "奥尔恰谷 Val d'Orcia 观景区", "lat": 43.0675, "lng": 11.619, "type": "景点", "info": "田园景观、丝柏公路一带。具体“Z弯丝柏公路”建议补充收藏点后再精确定位。"}, {"name": "蒙特普尔恰诺 Montepulciano", "lat": 43.0929, "lng": 11.7824, "type": "景点", "info": "山城；Piazza Grande及中世纪街巷。"}, {"name": "Piazza Grande, Montepulciano", "lat": 43.0928, "lng": 11.7823, "type": "景点", "info": "山顶大广场，俯瞰周边山谷。"}, {"name": "蒙特普尔恰诺民宿｜Via di Collazzi 78", "lat": 43.09022, "lng": 11.77905, "type": "住宿", "info": "9/5 住宿｜用户提供地址：Via di Collazzi 78, Montepulciano。地图点按 Via di Collazzi 同街段定位。"}], "order_note": "按当前住宿调整为：罗马 →（葡萄酒庄园，具体地址待补）→ 皮恩扎 → Vitaleta/奥尔恰谷 → 蒙特普尔恰诺老城 → Via di Collazzi 78 住宿。这样把蒙特普尔恰诺放在当天末段，避免游览后再折返皮恩扎。"}, {"id": "D3", "date": "9/6", "title": "蒙特普尔恰诺 → 锡耶纳 → 圣吉米尼亚诺 → 佛罗伦萨", "mode": "自驾 / 佛罗伦萨还车", "stay": "Wine Apartments Florence Bolgheri", "stay_note": "Via del Sole 4, 50123 Firenze", "points": [{"name": "蒙特普尔恰诺民宿｜Via di Collazzi 78", "lat": 43.09022, "lng": 11.77905, "type": "出发", "info": "从 9/5 住宿 Via di Collazzi 78 出发。"}, {"name": "Piazza del Campo 贝壳广场", "lat": 43.3182, "lng": 11.3318, "type": "景点", "info": "锡耶纳核心广场、赛马节主场。"}, {"name": "锡耶纳大教堂 Duomo di Siena", "lat": 43.3177, "lng": 11.3287, "type": "景点", "info": "黑白大理石教堂，可视情况登顶。"}, {"name": "曼吉亚塔 Torre del Mangia", "lat": 43.3183, "lng": 11.332, "type": "景点", "info": "位于贝壳广场旁。"}, {"name": "Piazza della Cisterna 水井广场", "lat": 43.4677, "lng": 11.0433, "type": "景点", "info": "圣吉米尼亚诺核心广场；Gelateria Dondoli 位于附近。"}, {"name": "Torre Grossa 格罗萨塔楼", "lat": 43.4674, "lng": 11.0434, "type": "景点", "info": "登顶俯瞰丘陵与古塔群。"}, {"name": "Wine Apartments Florence Bolgheri", "lat": 43.77165, "lng": 11.25055, "type": "住宿", "info": "9/6–9/7 连住｜Via del Sole 4, 50123 Firenze。"}], "order_note": "Via di Collazzi 78 → 锡耶纳 → 圣吉米尼亚诺 → 佛罗伦萨 Via del Sole 4；整体方向顺路，抵达佛罗伦萨后还车。"}, {"id": "D4", "date": "9/7", "title": "佛罗伦萨 CityWalk", "mode": "步行", "stay": "Wine Apartments Florence Bolgheri（连住）", "stay_note": "Via del Sole 4, 50123 Firenze", "points": [{"name": "Wine Apartments Florence Bolgheri", "lat": 43.77165, "lng": 11.25055, "type": "住宿", "info": "9/6–9/7 连住｜Via del Sole 4, 50123 Firenze。"}, {"name": "圣母百花大教堂 Duomo", "lat": 43.7731, "lng": 11.256, "type": "景点", "info": "佛罗伦萨地标。"}, {"name": "共和广场 Piazza della Repubblica", "lat": 43.7711, "lng": 11.2537, "type": "景点", "info": "老城步行节点。"}, {"name": "乌菲兹美术馆 Uffizi", "lat": 43.7687, "lng": 11.2556, "type": "景点", "info": "建议按已预约时段进入。"}, {"name": "米开朗琪罗广场 Piazzale Michelangelo", "lat": 43.7629, "lng": 11.2651, "type": "景点", "info": "计划看日落；建议作为当天最后一站。"}], "order_note": "Via del Sole 4 → Duomo → 共和广场 → 乌菲兹 → 米开朗琪罗广场（日落）→ 返回 Via del Sole 4。"}, {"id": "D5", "date": "9/8", "title": "佛罗伦萨 → 威尼斯主岛 → Mestre", "mode": "高铁 / Vaporetto / 步行", "stay": "Campanile Venice Mestre（梅斯特雷康铂酒店）", "stay_note": "Via Ca' Marcello 8/G, 30172 Mestre", "points": [{"name": "Firenze S. M. Novella", "lat": 43.7762, "lng": 11.247, "type": "交通", "info": "约 09:39 出发前往威尼斯。"}, {"name": "Venezia Mestre", "lat": 45.4825, "lng": 12.2319, "type": "交通", "info": "酒店位于Mestre；可先寄存行李。"}, {"name": "Campanile Venice Mestre", "lat": 45.4798, "lng": 12.2337, "type": "住宿", "info": "9/8 住宿｜Via Ca' Marcello 8/G, 30172 Mestre。"}, {"name": "Venezia Santa Lucia / Ferrovia", "lat": 45.441, "lng": 12.321, "type": "交通", "info": "主岛火车站；出站即水上巴士枢纽。"}, {"name": "Ca' d'Oro 黄金宫", "lat": 45.4409, "lng": 12.333, "type": "景点", "info": "大运河沿线地标。"}, {"name": "里亚托桥 Ponte di Rialto", "lat": 45.438, "lng": 12.3358, "type": "景点", "info": "大运河核心地标。"}, {"name": "学院桥 Ponte dell'Accademia", "lat": 45.4318, "lng": 12.328, "type": "景点", "info": "大运河重要桥梁。"}, {"name": "Vallaresso / San Marco 码头", "lat": 45.4335, "lng": 12.3381, "type": "交通", "info": "Vaporetto 1号线建议下船点。"}, {"name": "圣马可广场 Piazza San Marco", "lat": 45.434, "lng": 12.3385, "type": "景点", "info": "威尼斯核心广场。"}, {"name": "叹息桥 Ponte dei Sospiri", "lat": 45.4341, "lng": 12.3409, "type": "景点", "info": "圣马可广场附近。"}, {"name": "里亚托市场 Mercato di Rialto", "lat": 45.4398, "lng": 12.3336, "type": "景点", "info": "可观察水上停泊与市场物流。"}], "order_note": "酒店/行李 → Santa Lucia → Vaporetto 1号线沿大运河 → Vallaresso → 圣马可/叹息桥 → 步行至里亚托 → 返回Mestre。"}, {"id": "D6", "date": "9/9", "title": "威尼斯 → 米兰 → 施皮茨 → 因特拉肯", "mode": "火车长途转场", "stay": "CityChalet / Marktgasse 66", "stay_note": "Marktgasse 66, 3800 Interlaken", "points": [{"name": "Venezia Mestre", "lat": 45.4825, "lng": 12.2319, "type": "交通", "info": "约 11:30 开始转场。"}, {"name": "Milano Centrale", "lat": 45.486, "lng": 9.204, "type": "交通", "info": "米兰换乘。"}, {"name": "Spiez Bahnhof", "lat": 46.6863, "lng": 7.6806, "type": "交通", "info": "施皮茨换乘。"}, {"name": "Interlaken Ost", "lat": 46.6905, "lng": 7.869, "type": "交通", "info": "抵达因特拉肯。"}, {"name": "CityChalet｜Marktgasse 66", "lat": 46.68693, "lng": 7.85256, "type": "住宿", "info": "9/9–9/11 连住｜Marktgasse 66, 3800 Interlaken。"}], "order_note": "当天以转场为主；地图连线表达换乘顺序，不代表真实铁路轨迹。"}, {"id": "D7", "date": "9/10", "title": "施皮茨 + 图恩湖 + 图恩", "mode": "火车 / 游船 / 步行（PDF另有“自驾”字样）", "stay": "CityChalet / Marktgasse 66（连住）", "stay_note": "Marktgasse 66, 3800 Interlaken", "points": [{"name": "CityChalet｜Marktgasse 66", "lat": 46.68693, "lng": 7.85256, "type": "住宿", "info": "9/9–9/11 连住｜Marktgasse 66, 3800 Interlaken。"}, {"name": "Spiez Bahnhof / 观景点", "lat": 46.6863, "lng": 7.6806, "type": "景点", "info": "可俯瞰施皮茨与图恩湖。"}, {"name": "施皮茨城堡 Schloss Spiez", "lat": 46.6846, "lng": 7.6916, "type": "景点", "info": "城堡与塔楼。"}, {"name": "Spiez Schiffstation 码头", "lat": 46.6834, "lng": 7.6916, "type": "交通", "info": "从施皮茨乘船前往图恩。"}, {"name": "图恩老城 Thun Altstadt", "lat": 46.7586, "lng": 7.6281, "type": "景点", "info": "彩色拱廊街巷、阿勒河沿线。"}, {"name": "图恩城堡 Schloss Thun", "lat": 46.7591, "lng": 7.6297, "type": "景点", "info": "图恩地标。"}, {"name": "Thun Bahnhof", "lat": 46.7548, "lng": 7.629, "type": "交通", "info": "火车返回因特拉肯。"}, {"name": "龙疆 Lungern（备选/待确认）", "lat": 46.7857, "lng": 8.1599, "type": "备选", "info": "PDF D7标题行提到“龙疆”，但详细玩法未展开；因方向与施皮茨/图恩不同，暂不纳入主线路。"}], "order_note": "Marktgasse 66 → 施皮茨 → 图恩湖游船 → 图恩老城/城堡 → 返回 Marktgasse 66。Lungern 与主线反向，继续作为备选点单独显示。"}, {"id": "D8", "date": "9/11", "title": "格林德瓦 + First 山", "mode": "自驾 / 缆车 / 山地项目", "stay": "CityChalet / Marktgasse 66（第3晚）", "stay_note": "Marktgasse 66, 3800 Interlaken", "points": [{"name": "CityChalet｜Marktgasse 66", "lat": 46.68693, "lng": 7.85256, "type": "住宿", "info": "9/9–9/11 连住｜Marktgasse 66, 3800 Interlaken。"}, {"name": "Grindelwald Firstbahn 缆车站", "lat": 46.6243, "lng": 8.0412, "type": "交通", "info": "从因特拉肯驾车约25分钟（实际视交通）。"}, {"name": "Grindelwald First", "lat": 46.66, "lng": 8.0553, "type": "景点", "info": "First峰；缆车、山地项目。"}, {"name": "First Cliff Walk", "lat": 46.6595, "lng": 8.0556, "type": "景点", "info": "悬崖步道；行程列为免费项目。"}], "order_note": "Marktgasse 66 → Grindelwald Firstbahn → 缆车上First → Cliff Walk/项目 → 返回 Marktgasse 66。"}, {"id": "D9", "date": "9/12", "title": "因特拉肯 → 苏黎世 CityWalk → 罗马机场", "mode": "火车 / 步行 / S-Bahn / 飞机", "stay": "Hilton Rome Airport（罗马机场希尔顿酒店）", "stay_note": "Via Arturo Ferrarin 2, 00054 Fiumicino", "points": [{"name": "Interlaken Ost", "lat": 46.6905, "lng": 7.869, "type": "交通", "info": "前往苏黎世。"}, {"name": "Zürich HB", "lat": 47.3782, "lng": 8.5402, "type": "交通", "info": "寄存行李后开始CityWalk。"}, {"name": "利马特河滨河步道", "lat": 47.3736, "lng": 8.5432, "type": "景点", "info": "老城滨河步行。"}, {"name": "苏黎世大教堂 Grossmünster", "lat": 47.3701, "lng": 8.5441, "type": "景点", "info": "苏黎世老城地标。"}, {"name": "Sprüngli Paradeplatz", "lat": 47.3696, "lng": 8.5382, "type": "景点", "info": "班霍夫大街上的经典巧克力店。"}, {"name": "Bürkliplatz / 苏黎世湖湖滨", "lat": 47.3658, "lng": 8.5417, "type": "景点", "info": "湖滨公园、帆船景观。"}, {"name": "Zürich Flughafen ZRH", "lat": 47.4582, "lng": 8.5555, "type": "交通", "info": "由 Zürich HB 乘S-Bahn前往机场。"}, {"name": "Roma Fiumicino FCO", "lat": 41.8003, "lng": 12.2389, "type": "交通", "info": "飞回罗马。"}, {"name": "Hilton Rome Airport", "lat": 41.79141, "lng": 12.25553, "type": "住宿", "info": "9/12 住宿｜Via Arturo Ferrarin 2, 00054 Fiumicino。"}], "order_note": "苏黎世段建议 Zürich HB → 利马特河 → Grossmünster → Bahnhofstrasse/Sprüngli → 湖滨 → 回HB取行李 → ZRH机场。"}, {"id": "D10", "date": "9/13", "title": "罗马 → 成都", "mode": "航班", "stay": "返程", "stay_note": "", "points": [{"name": "Hilton Rome Airport", "lat": 41.79141, "lng": 12.25553, "type": "住宿", "info": "从 9/12 罗马机场希尔顿酒店出发前往航站楼。"}, {"name": "Roma Fiumicino FCO", "lat": 41.8003, "lng": 12.2389, "type": "交通", "info": "13:05 航班返成都。"}], "order_note": "机场酒店 → FCO → 成都。"}];
+const COLORS = ["#e74c3c", "#e67e22", "#f1c40f", "#2ecc71", "#1abc9c", "#3498db", "#3f51b5", "#8e44ad", "#d35400", "#607d8b"];
+
+const map = L.map('map', { zoomControl:true, preferCanvas:true }).setView([44.3, 10.7], 6);
+
+const baseOSM = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19,
+  attribution: '&copy; OpenStreetMap contributors'
+}).addTo(map);
+
+const baseTopo = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+  maxZoom: 17,
+  attribution: 'Map data &copy; OpenStreetMap contributors, SRTM | Map style &copy; OpenTopoMap'
+});
+
+L.control.layers({"OpenStreetMap": baseOSM, "地形图": baseTopo}, null, {collapsed:true}).addTo(map);
+
+const groups = {};
+const boundsByDay = {};
+
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'})[m]);
+}
+
+function iconFor(point, dayColor, idx) {
+  if (point.type === '住宿') {
+    return L.divIcon({
+      className:'',
+      html:'<div class="hotelIcon">住</div>',
+      iconSize:[28,28], iconAnchor:[14,14], popupAnchor:[0,-15]
+    });
+  }
+  return L.divIcon({
+    className:'',
+    html:`<div class="numberIcon" style="background:${dayColor}">${idx+1}</div>`,
+    iconSize:[27,27], iconAnchor:[13,13], popupAnchor:[0,-14]
+  });
+}
+
+function popupHtml(day, p) {
+  const q = encodeURIComponent(`${p.lat},${p.lng}`);
+  return `<div class="popup">
+    <h3>${esc(p.name)}</h3>
+    <span class="tag">${esc(day.id)} · ${esc(day.date)} · ${esc(p.type)}</span>
+    <p>${esc(p.info)}</p>
+    <p><a target="_blank" rel="noopener" href="https://www.openstreetmap.org/?mlat=${p.lat}&mlon=${p.lng}#map=16/${p.lat}/${p.lng}">OpenStreetMap</a>
+    &nbsp;·&nbsp;
+    <a target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${q}">Google Maps</a></p>
+  </div>`;
+}
+
+DATA.forEach((day, di) => {
+  const c = COLORS[di % COLORS.length];
+  const g = L.layerGroup().addTo(map);
+  groups[day.id] = g;
+  const latlngs = [];
+  day.points.forEach((p, i) => {
+    const ll = [p.lat, p.lng];
+    latlngs.push(ll);
+    const m = L.marker(ll, {icon: iconFor(p, c, i)})
+      .bindTooltip(esc(p.name), {className:'spot-tooltip', direction:'top', offset:[0,-14], opacity:1, permanent:true, interactive:false})
+      .bindPopup(popupHtml(day,p), {maxWidth:320});
+    m.addTo(g);
+  });
+  if (latlngs.length > 1) {
+    L.polyline(latlngs, {color:c, weight:4, opacity:.78, dashArray: day.mode.includes('火车') ? '8,7' : null}).addTo(g);
+  }
+  boundsByDay[day.id] = L.latLngBounds(latlngs);
+});
+
+function renderSidebar() {
+  const root = document.getElementById('days');
+  const tabs = document.getElementById('day-tabs');
+  tabs.insertAdjacentHTML('beforeend', DATA.map((day, di) =>
+    `<button type="button" data-day="${day.id}" onclick="focusDay('${day.id}')" style="--day-color:${COLORS[di % COLORS.length]}">${esc(day.date)}</button>`
+  ).join(''));
+  root.innerHTML = DATA.map((day, di) => {
+    const c = COLORS[di % COLORS.length];
+    const stops = day.points.map((p,i)=>`
+      <div class="stop">
+        <b>${i+1}. ${esc(p.name)} <span style="font-weight:400;color:#9ca3af">· ${esc(p.type)}</span></b>
+        <small>${esc(p.info)}</small>
+      </div>`).join('');
+    return `<section class="day" id="card-${day.id}">
+      <div class="day-title" onclick="focusDay('${day.id}')">
+        <span class="chip" style="background:${c}">${day.id}</span>
+        <div>
+          <div class="date">${esc(day.date)} · ${esc(day.mode)}</div>
+          <div class="name">${esc(day.title)}</div>
+        </div>
+      </div>
+      <div class="meta">
+        <div class="stay">住宿：${esc(day.stay)}</div>
+        <div>${esc(day.stay_note)}</div>
+      </div>
+      <div class="details">
+        ${stops}
+        <div class="note"><b>顺路建议：</b>${esc(day.order_note)}</div>
+      </div>
+    </section>`;
+  }).join('');
+}
+renderSidebar();
+
+function focusDay(id) {
+  DATA.forEach(d => setDayVisible(d.id, d.id === id));
+  document.querySelectorAll('.day-tabs button').forEach(el => el.classList.toggle('active', el.dataset.day === id));
+  document.querySelectorAll('.day').forEach(el=>el.classList.remove('open'));
+  document.getElementById('card-'+id).classList.add('open');
+  const b = boundsByDay[id];
+  if (b && b.isValid()) map.fitBounds(b.pad(.18), {maxZoom:13});
+}
+
+function setDayVisible(id, visible) {
+  const g = groups[id];
+  if (visible) g.addTo(map); else map.removeLayer(g);
+}
+
+function showAll() {
+  DATA.forEach(d => setDayVisible(d.id, true));
+  document.querySelectorAll('.day-tabs button').forEach(el => el.classList.toggle('active', el.dataset.day === 'all'));
+  const bs = [];
+  DATA.forEach(d => d.points.forEach(p => bs.push([p.lat,p.lng])));
+  map.fitBounds(L.latLngBounds(bs).pad(.08));
+}
+
+showAll();
+</script>
+</body>
+</html>
