@@ -129,7 +129,7 @@ git commit -m "feat: export restaurant workbook data for web"
 **Interfaces:**
 - Consumes: `DAY_ORDER` 与 `RESTAURANT_DATA`。
 - Produces: `DAY_PREVIEWS: Record<string, Preview[]>`，`Preview` 为 `{ restaurantName, imageUrl, sourceUrl, alt }`。
-- 每个有用餐页面的日期至少 2 张预览，最多 3 张；每张的 `sourceUrl` 必须等于该餐厅的 `siteUrl` 或其官方社媒主页。
+- 优先为每个有用餐页面提供 2–3 张预览；若该日期没有可访问的第一方图片，允许空数组并由页面显示官网图片替代项。每张的 `sourceUrl` 必须等于该餐厅的 `siteUrl` 或其官方社媒主页。
 
 - [ ] **Step 1: 写失败的图片来源测试**
 
@@ -139,16 +139,19 @@ import test from 'node:test';
 import { DAY_ORDER } from '../restaurants-data.mjs';
 import { DAY_PREVIEWS } from '../restaurant-images.mjs';
 
-test('offers 2–3 source-labelled previews for each shown date', () => {
+test('uses only sourced previews and retains a meaningful image selection', () => {
+  let count = 0;
   for (const day of DAY_ORDER) {
-    const previews = DAY_PREVIEWS[day];
-    assert.ok(previews.length >= 2 && previews.length <= 3);
+    const previews = DAY_PREVIEWS[day] ?? [];
+    assert.ok(previews.length <= 3);
+    count += previews.length;
     for (const preview of previews) {
       assert.ok(preview.imageUrl.startsWith('https://'));
       assert.ok(preview.sourceUrl.startsWith('https://'));
       assert.match(preview.alt, /餐厅|菜品/);
     }
   }
+  assert.ok(count >= 12);
 });
 ```
 
@@ -181,7 +184,7 @@ export const DAY_PREVIEWS = {
 
 Run: `node --test tests/restaurant-images.test.mjs`
 
-Expected: PASS；所有预览均有 HTTPS 图片、可点击第一方来源和可读替代文本。
+Expected: PASS；至少12张预览均有 HTTPS 图片、可点击第一方来源和可读替代文本；没有可用图片的日期保留为空数组。
 
 - [ ] **Step 5: 提交图片预览数据**
 
