@@ -51,9 +51,10 @@
     .restaurant.is-filtered { display:none; }
     .restaurant-head { display:grid; grid-template-columns:auto 1fr; gap:11px; align-items:start; }
     .rank { display:grid; place-items:center; width:35px; height:35px; background:var(--ink); color:#fff; font-size:.85rem; font-weight:900; }
-    .rank-b { background:var(--sage); } .rank-c { background:#9c7450; }
+    .rank-b { background:var(--sage); } .rank-c { background:#9c7450; } .rank-d { background:#6d6175; } .rank-e { background:var(--tomato); }
     .restaurant h3 { margin:0; font-size:1.08rem; line-height:1.2; letter-spacing:-.025em; }
     .english { display:block; margin-top:4px; color:var(--muted); font-size:.78rem; font-weight:650; letter-spacing:.01em; }
+    .source-status { display:inline-flex; margin-top:7px; padding:3px 7px; border:1px solid var(--sage); color:var(--sage); font-size:.68rem; font-weight:850; letter-spacing:.03em; }
     .address { margin:10px 0 0 46px; color:var(--muted); font-size:.84rem; line-height:1.48; }
     .decision-line { margin:14px 0 0 46px; padding-left:11px; border-left:2px solid var(--sage); font-size:.88rem; line-height:1.55; }
     .facts { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:15px 0 0 46px; }
@@ -79,7 +80,7 @@
     <header class="masthead">
       <p class="eyebrow">Italy · Switzerland / 8–12 人</p>
       <h1>按日期，<br>把一顿饭选明白。</h1>
-      <p class="lede">每个途经景点和酒店均保留 A / B / C 三个候选。先选日期，再按预约难度筛选；外链可直接打开导航、菜单和官网。</p>
+      <p class="lede">每个途经景点和酒店均保留 A / B / C 原始候选，并补充 D / E「官网核验新增」。先选日期，再按预约难度筛选；外链可直接打开导航、菜单和官网。</p>
     </header>
 
     <nav id="date-nav" class="date-nav" aria-label="按日期查看餐厅"></nav>
@@ -105,8 +106,9 @@
   </main>
 
   <script type="module">
-    import { DAY_ORDER, anchorsForDay } from './restaurants-data.mjs';
+    import { DAY_ORDER } from './restaurants-data.mjs';
     import { DAY_PREVIEWS } from './restaurant-images.mjs';
+    import { supplementedAnchorsForDay } from './restaurant-supplements.mjs';
 
     const HOMESTAY_DAYS = new Set(['9/9', '9/10', '9/11']);
     const dateNav = document.querySelector('#date-nav');
@@ -123,7 +125,13 @@
     const anchorKey = (anchor, index) => `${activeDay}-${index}-${anchor.anchorName}`.replace(/[^a-zA-Z0-9_-]/g, '-');
     const bookingClass = (booking) => booking.includes('团队必须') ? 'team' : booking.includes('可直接到店') ? 'walkin' : 'reserve';
     const bookingFilterName = (value) => ({ all:'全部候选', walkin:'可直接到店', reserve:'建议预订', team:'团队必须预订' })[value] ?? '全部候选';
-    const rankClass = (rank) => rank === 1 ? '' : rank === 2 ? 'rank-b' : 'rank-c';
+    const rankClass = (rank) => ({ 1:'', 2:'rank-b', 3:'rank-c', 4:'rank-d', 5:'rank-e' })[rank] ?? 'rank-e';
+    const priceLabel = (restaurant) => restaurant.priceCny && restaurant.priceLocal
+      ? `${escapeHtml(restaurant.currency)} ${escapeHtml(restaurant.priceLocal)} / 人<br>约 ¥${escapeHtml(restaurant.priceCny)} / 人`
+      : escapeHtml(restaurant.priceNote || '待官网确认');
+    const distanceLabel = (restaurant) => restaurant.distanceKm === null || restaurant.distanceKm === undefined
+      ? `${escapeHtml(restaurant.arrivalHint || '需以导航确认')}<br>${escapeHtml(restaurant.routeNote || '')}`
+      : `${escapeHtml(restaurant.distanceKm)} km · ${escapeHtml(restaurant.arrivalHint)}`;
 
     function renderPreviews(day) {
       return (DAY_PREVIEWS[day] ?? []).slice(0, 3).map((preview) => {
@@ -145,11 +153,12 @@
       item.className = 'restaurant';
       item.dataset.booking = bookingClass(restaurant.booking);
       item.innerHTML = `
-        <div class="restaurant-head"><span class="rank ${rankClass(restaurant.rank)}">${String.fromCharCode(64 + restaurant.rank)}</span><div><h3>${escapeHtml(restaurant.nameCn)}</h3><span class="english">${escapeHtml(restaurant.name)}</span></div></div>
+        <div class="restaurant-head"><span class="rank ${rankClass(restaurant.rank)}">${String.fromCharCode(64 + restaurant.rank)}</span><div><h3>${escapeHtml(restaurant.nameCn)}</h3><span class="english">${escapeHtml(restaurant.name)}</span>${restaurant.sourceStatus ? `<span class="source-status">${escapeHtml(restaurant.level)}</span>` : ''}</div></div>
         <p class="address">${escapeHtml(restaurant.address)}</p>
         <p class="decision-line"><strong>为什么选它：</strong>${escapeHtml(restaurant.reason)}<br><strong>爽口菜：</strong>${escapeHtml(restaurant.dishes)}</p>
-        <div class="facts"><div class="fact"><strong>距离（直线估算）</strong>${escapeHtml(restaurant.distanceKm)} km · ${escapeHtml(restaurant.arrivalHint)}</div><div class="fact"><strong>到达提示</strong>${escapeHtml(restaurant.routeNote)}</div><div class="fact"><strong>餐标</strong>${escapeHtml(restaurant.currency)} ${escapeHtml(restaurant.priceLocal)} / 人<br>约 ¥${escapeHtml(restaurant.priceCny)} / 人</div><div class="fact"><strong>预约等级</strong>${escapeHtml(restaurant.booking)}</div></div>
+        <div class="facts"><div class="fact"><strong>${restaurant.distanceKm === null || restaurant.distanceKm === undefined ? '距离' : '距离（直线估算）'}</strong>${distanceLabel(restaurant)}</div><div class="fact"><strong>到达提示</strong>${escapeHtml(restaurant.routeNote)}</div><div class="fact"><strong>餐标</strong>${priceLabel(restaurant)}</div><div class="fact"><strong>预约等级</strong>${escapeHtml(restaurant.booking)}</div></div>
         <p class="booking-team"><strong>团队提示：</strong>${escapeHtml(restaurant.bookingNote)}</p>
+        ${restaurant.sourceStatus ? `<p class="menu-status"><strong>新增来源：</strong>${escapeHtml(restaurant.sourceStatus)}</p>` : ''}
         <p class="menu-status"><strong>菜单状态：</strong>${escapeHtml(restaurant.menuStatus)}</p>
         <div class="actions"><a class="action primary" href="${escapeHtml(restaurant.directionsUrl)}" target="_blank" rel="noopener">Google 导航</a><a class="action ${menuNeedsCheck ? 'menu-check' : ''}" href="${escapeHtml(restaurant.menuUrl)}" target="_blank" rel="noopener">${menuNeedsCheck ? '出发前核对' : '查看菜单'}</a><a class="action" href="${escapeHtml(restaurant.siteUrl)}" target="_blank" rel="noopener">餐厅官网</a></div>`;
       return item;
@@ -199,9 +208,9 @@
     function renderDay(day) {
       if (!DAY_ORDER.includes(day)) return;
       activeDay = day;
-      const anchors = anchorsForDay(day);
+      const anchors = supplementedAnchorsForDay(day);
       dayTitle.textContent = day;
-      anchorCount.textContent = `${anchors.length} 个行程点 · 每点 3 个候选`;
+      anchorCount.textContent = `${anchors.length} 个行程点 · 每点 5 个候选`;
       homestayNotice.hidden = !HOMESTAY_DAYS.has(day);
       dateNav.replaceChildren(...DAY_ORDER.map((date) => {
         const button = document.createElement('button');
