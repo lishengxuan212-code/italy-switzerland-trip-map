@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="意大利瑞士团队行程的按日期餐厅决策清单">
+  <title>意大利·瑞士餐厅决策清单</title>
+  <style>
+    :root { --ink:#17283b; --paper:#fbf7f0; --paper-deep:#f2e9dc; --tomato:#d94c3d; --sage:#547161; --line:#ddd2c2; --muted:#65717c; --white:#fffdf9; --shadow:0 10px 28px rgba(32,42,50,.08); }
+    * { box-sizing:border-box; }
+    html { background:var(--paper); color:var(--ink); font-family:Inter,"PingFang SC","Microsoft YaHei",system-ui,sans-serif; }
+    body { margin:0; min-width:320px; background:radial-gradient(circle at 82% 2%,rgba(84,113,97,.10),transparent 27rem),var(--paper); }
+    button, a { -webkit-tap-highlight-color:transparent; }
+    button { font:inherit; }
+    a { color:inherit; }
+    .shell { max-width:1100px; margin:0 auto; padding:0 18px 52px; }
+    .masthead { padding:36px 0 18px; border-bottom:1px solid var(--line); }
+    .eyebrow { display:flex; align-items:center; gap:8px; margin:0 0 12px; color:var(--sage); font-size:.78rem; font-weight:800; letter-spacing:.1em; text-transform:uppercase; }
+    .eyebrow::before { content:""; width:28px; height:2px; background:var(--tomato); }
+    h1 { max-width:760px; margin:0; font-size:clamp(2rem,7vw,4.4rem); line-height:1.02; letter-spacing:-.055em; }
+    .lede { max-width:670px; margin:14px 0 0; color:var(--muted); font-size:1rem; line-height:1.65; }
+    .date-nav, .filter-row { display:flex; gap:9px; overflow-x:auto; scrollbar-width:none; padding:16px 0 12px; }
+    .date-nav::-webkit-scrollbar, .filter-row::-webkit-scrollbar { display:none; }
+    .date-button, .filter-button { flex:0 0 auto; min-height:44px; border:1px solid var(--line); border-radius:999px; background:rgba(255,253,249,.7); color:var(--ink); padding:0 17px; font-weight:750; cursor:pointer; transition:background .2s ease,color .2s ease,transform .2s ease; }
+    .date-button[aria-current="date"] { background:var(--ink); border-color:var(--ink); color:#fff; }
+    .filter-label { display:block; margin-top:11px; color:var(--muted); font-size:.8rem; font-weight:800; letter-spacing:.06em; }
+    .filter-button[aria-pressed="true"] { background:var(--sage); border-color:var(--sage); color:#fff; }
+    .context { display:flex; align-items:baseline; justify-content:space-between; gap:12px; padding:20px 0 14px; }
+    .context h2 { margin:0; font-size:1.25rem; letter-spacing:-.03em; }
+    .context p { margin:0; color:var(--muted); font-size:.88rem; }
+    .homestay-notice { margin:3px 0 16px; border-left:4px solid var(--tomato); background:#fff2ed; padding:13px 15px; color:#81362d; line-height:1.5; font-weight:700; animation:rise .35s ease both; }
+    .preview-region { display:grid; grid-auto-flow:column; grid-auto-columns:minmax(220px,76vw); gap:12px; overflow-x:auto; padding:1px 0 22px; scrollbar-width:thin; }
+    .preview { display:grid; min-height:172px; position:relative; overflow:hidden; background:var(--ink); color:#fff; text-decoration:none; }
+    .preview img { width:100%; height:100%; min-height:172px; object-fit:cover; opacity:.86; transition:transform .4s ease,opacity .3s ease; }
+    .preview span { position:absolute; left:11px; bottom:10px; border-radius:99px; background:rgba(23,40,59,.8); padding:6px 9px; font-size:.72rem; font-weight:800; }
+    .image-fallback { display:none; place-items:center; min-height:172px; padding:20px; background:var(--ink); color:#fff; font-weight:800; text-decoration:underline; text-underline-offset:3px; }
+    .preview.is-broken .image-fallback { display:grid; }
+    .anchors { display:grid; gap:11px; }
+    details { border-top:1px solid var(--line); background:rgba(255,253,249,.36); animation:rise .4s ease both; }
+    details:last-child { border-bottom:1px solid var(--line); }
+    summary { display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:10px; min-height:68px; padding:12px 2px; cursor:pointer; list-style:none; }
+    summary::-webkit-details-marker { display:none; }
+    .anchor-kind { color:var(--sage); font-size:.78rem; font-weight:850; }
+    .anchor-title { font-size:1.04rem; font-weight:850; letter-spacing:-.02em; }
+    .anchor-meal { display:block; margin-top:3px; color:var(--muted); font-size:.8rem; font-weight:600; }
+    .chevron { width:26px; height:26px; display:grid; place-items:center; border:1px solid var(--line); border-radius:50%; color:var(--tomato); font-weight:900; transition:transform .2s ease; }
+    details[open] .chevron { transform:rotate(45deg); }
+    .candidate-grid { display:grid; gap:12px; padding:1px 0 19px; }
+    .restaurant { position:relative; padding:16px 0; border-top:1px dashed var(--line); animation:rise .35s ease both; }
+    .restaurant:first-child { border-top:0; }
+    .restaurant.is-filtered { display:none; }
+    .restaurant-head { display:grid; grid-template-columns:auto 1fr; gap:11px; align-items:start; }
+    .rank { display:grid; place-items:center; width:35px; height:35px; background:var(--ink); color:#fff; font-size:.85rem; font-weight:900; }
+    .rank-b { background:var(--sage); } .rank-c { background:#9c7450; }
+    .restaurant h3 { margin:0; font-size:1.08rem; line-height:1.2; letter-spacing:-.025em; }
+    .english { display:block; margin-top:4px; color:var(--muted); font-size:.78rem; font-weight:650; letter-spacing:.01em; }
+    .address { margin:10px 0 0 46px; color:var(--muted); font-size:.84rem; line-height:1.48; }
+    .decision-line { margin:14px 0 0 46px; padding-left:11px; border-left:2px solid var(--sage); font-size:.88rem; line-height:1.55; }
+    .facts { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:15px 0 0 46px; }
+    .fact { padding:9px 10px; background:var(--paper-deep); font-size:.78rem; line-height:1.45; }
+    .fact strong { display:block; margin-bottom:2px; color:var(--sage); font-size:.7rem; letter-spacing:.04em; }
+    .booking-team { margin:12px 0 0 46px; color:#87382d; font-size:.82rem; line-height:1.5; }
+    .menu-status { margin:12px 0 0 46px; color:var(--muted); font-size:.78rem; line-height:1.45; }
+    .actions { display:flex; flex-wrap:wrap; gap:8px; margin:14px 0 0 46px; }
+    .action { display:inline-flex; align-items:center; justify-content:center; min-height:44px; border:1px solid var(--ink); padding:0 12px; background:var(--white); text-decoration:none; font-size:.82rem; font-weight:850; transition:transform .2s ease,background .2s ease,color .2s ease; }
+    .action.primary { background:var(--ink); color:#fff; }
+    .action.menu-check { border-color:var(--tomato); color:var(--tomato); }
+    .empty-filter { margin:5px 0 13px; color:var(--muted); font-size:.88rem; }
+    footer { margin-top:36px; padding-top:18px; border-top:1px solid var(--line); color:var(--muted); font-size:.78rem; line-height:1.65; }
+    footer p { margin:0 0 8px; }
+    @media (hover:hover) { .date-button:hover,.filter-button:hover,.action:hover { transform:translateY(-2px); } .preview:hover img { transform:scale(1.04); opacity:1; } }
+    @media (min-width:760px) { .shell { padding-left:28px; padding-right:28px; } .masthead { padding-top:62px; } .candidate-grid { grid-template-columns:repeat(3,minmax(0,1fr)); gap:18px; } .restaurant { min-width:0; border-top:0; border-left:1px dashed var(--line); padding:0 0 0 15px; } .restaurant:first-child { border-left:0; padding-left:0; } .address,.decision-line,.facts,.booking-team,.menu-status,.actions { margin-left:0; } .facts { grid-template-columns:1fr; } }
+    @keyframes rise { from { opacity:0; transform:translateY(7px); } to { opacity:1; transform:translateY(0); } }
+    @media (prefers-reduced-motion: reduce) { *,*::before,*::after { animation:none !important; transition:none !important; scroll-behavior:auto !important; } }
+  </style>
+</head>
+<body>
+  <main id="restaurant-app" class="shell">
+    <header class="masthead">
+      <p class="eyebrow">Italy · Switzerland / 8–12 人</p>
+      <h1>按日期，<br>把一顿饭选明白。</h1>
+      <p class="lede">每个途经景点和酒店均保留 A / B / C 三个候选。先选日期，再按预约难度筛选；外链可直接打开导航、菜单和官网。</p>
+    </header>
+
+    <nav id="date-nav" class="date-nav" aria-label="按日期查看餐厅"></nav>
+    <span class="filter-label">团队预约筛选</span>
+    <div id="filter-row" class="filter-row" aria-label="按预约要求筛选">
+      <button class="filter-button" type="button" data-filter="all" aria-pressed="true">全部</button>
+      <button class="filter-button" type="button" data-filter="walkin" aria-pressed="false">可直接到店</button>
+      <button class="filter-button" type="button" data-filter="reserve" aria-pressed="false">建议预订</button>
+      <button class="filter-button" type="button" data-filter="team" aria-pressed="false">团队必须预订</button>
+    </div>
+
+    <section class="context" aria-live="polite">
+      <h2><span id="day-title">9/4</span> · 当天餐厅</h2>
+      <p id="anchor-count"></p>
+    </section>
+    <aside id="homestay-notice" class="homestay-notice" hidden>今晚在民宿做饭：本页仅保留当天午餐及行程备用餐厅，不提供晚餐推荐。</aside>
+    <section id="preview-region" class="preview-region" aria-label="餐厅官网图片预览"></section>
+    <section id="anchor-list" class="anchors" aria-label="行程点附近餐厅"></section>
+    <footer>
+      <p>距离为餐厅与行程点的直线估算，实际步行/驾车请以 Google 导航为准。人民币餐标使用清单中的规划汇率估算；意大利餐厅另可能收取 coperto（餐位费）。</p>
+      <p>菜单与官网链接按清单核对日期整理；标记“出发前核对”的链接须在出发前再次确认。页面不展示实时余位，8–12 人团队请按预约提示联系餐厅。</p>
+    </footer>
+  </main>
+
+  <script type="module">
+    import { DAY_ORDER, anchorsForDay } from './restaurants-data.mjs';
+    import { DAY_PREVIEWS } from './restaurant-images.mjs';
+
+    const HOMESTAY_DAYS = new Set(['9/9', '9/10', '9/11']);
+    const dateNav = document.querySelector('#date-nav');
+    const filterRow = document.querySelector('#filter-row');
+    const dayTitle = document.querySelector('#day-title');
+    const anchorCount = document.querySelector('#anchor-count');
+    const homestayNotice = document.querySelector('#homestay-notice');
+    const previewRegion = document.querySelector('#preview-region');
+    const anchorList = document.querySelector('#anchor-list');
+    let activeDay = '9/4';
+    let activeBookingFilter = 'all';
+
+    const escapeHtml = (value) => String(value ?? '').replace(/[&<>'"]/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' })[char]);
+    const anchorKey = (anchor, index) => `${activeDay}-${index}-${anchor.anchorName}`.replace(/[^a-zA-Z0-9_-]/g, '-');
+    const bookingClass = (booking) => booking.includes('团队必须') ? 'team' : booking.includes('可直接到店') ? 'walkin' : 'reserve';
+    const bookingFilterName = (value) => ({ all:'全部候选', walkin:'可直接到店', reserve:'建议预订', team:'团队必须预订' })[value] ?? '全部候选';
+    const rankClass = (rank) => rank === 1 ? '' : rank === 2 ? 'rank-b' : 'rank-c';
+
+    function renderPreviews(day) {
+      return (DAY_PREVIEWS[day] ?? []).slice(0, 3).map((preview) => {
+        const link = document.createElement('a');
+        link.className = 'preview';
+        link.href = preview.sourceUrl;
+        link.target = '_blank';
+        link.rel = 'noopener';
+        link.innerHTML = `<img src="${escapeHtml(preview.imageUrl)}" loading="lazy" alt="${escapeHtml(preview.alt)}"><span>图片来自餐厅官网</span><span class="image-fallback">查看官网图片</span>`;
+        const image = link.querySelector('img');
+        image.addEventListener('error', () => { image.hidden = true; link.classList.add('is-broken'); });
+        return link;
+      });
+    }
+
+    function renderRestaurant(restaurant) {
+      const menuNeedsCheck = restaurant.menuStatus.includes('未核通');
+      const item = document.createElement('article');
+      item.className = 'restaurant';
+      item.dataset.booking = bookingClass(restaurant.booking);
+      item.innerHTML = `
+        <div class="restaurant-head"><span class="rank ${rankClass(restaurant.rank)}">${String.fromCharCode(64 + restaurant.rank)}</span><div><h3>${escapeHtml(restaurant.nameCn)}</h3><span class="english">${escapeHtml(restaurant.name)}</span></div></div>
+        <p class="address">${escapeHtml(restaurant.address)}</p>
+        <p class="decision-line"><strong>为什么选它：</strong>${escapeHtml(restaurant.reason)}<br><strong>爽口菜：</strong>${escapeHtml(restaurant.dishes)}</p>
+        <div class="facts"><div class="fact"><strong>距离（直线估算）</strong>${escapeHtml(restaurant.distanceKm)} km · ${escapeHtml(restaurant.arrivalHint)}</div><div class="fact"><strong>到达提示</strong>${escapeHtml(restaurant.routeNote)}</div><div class="fact"><strong>餐标</strong>${escapeHtml(restaurant.currency)} ${escapeHtml(restaurant.priceLocal)} / 人<br>约 ¥${escapeHtml(restaurant.priceCny)} / 人</div><div class="fact"><strong>预约等级</strong>${escapeHtml(restaurant.booking)}</div></div>
+        <p class="booking-team"><strong>团队提示：</strong>${escapeHtml(restaurant.bookingNote)}</p>
+        <p class="menu-status"><strong>菜单状态：</strong>${escapeHtml(restaurant.menuStatus)}</p>
+        <div class="actions"><a class="action primary" href="${escapeHtml(restaurant.directionsUrl)}" target="_blank" rel="noopener">Google 导航</a><a class="action ${menuNeedsCheck ? 'menu-check' : ''}" href="${escapeHtml(restaurant.menuUrl)}" target="_blank" rel="noopener">${menuNeedsCheck ? '出发前核对' : '查看菜单'}</a><a class="action" href="${escapeHtml(restaurant.siteUrl)}" target="_blank" rel="noopener">餐厅官网</a></div>`;
+      return item;
+    }
+
+    function renderAnchor(anchor, index) {
+      const details = document.createElement('details');
+      const key = anchorKey(anchor, index);
+      details.id = key;
+      details.open = index === 0;
+      details.innerHTML = `<summary><span class="anchor-kind">${escapeHtml(anchor.anchorType)}</span><span><span class="anchor-title">${escapeHtml(anchor.anchorName)}</span><span class="anchor-meal">${escapeHtml(anchor.meal)}</span></span><span class="chevron" aria-hidden="true">+</span></summary><div class="candidate-grid"></div>`;
+      const grid = details.querySelector('.candidate-grid');
+      anchor.restaurants.forEach((restaurant) => grid.append(renderRestaurant(restaurant)));
+      const empty = document.createElement('p');
+      empty.className = 'empty-filter';
+      empty.hidden = true;
+      empty.textContent = `此行程点没有符合「${bookingFilterName(activeBookingFilter)}」的候选；标题已保留，便于切换筛选后继续比较。`;
+      grid.after(empty);
+      return details;
+    }
+
+    function applyFilter() {
+      anchorList.querySelectorAll('details').forEach((details) => {
+        const candidates = [...details.querySelectorAll('.restaurant')];
+        let visible = 0;
+        candidates.forEach((candidate) => {
+          const show = activeBookingFilter === 'all' || candidate.dataset.booking === activeBookingFilter;
+          candidate.classList.toggle('is-filtered', !show);
+          if (show) visible += 1;
+        });
+        details.querySelector('.empty-filter').hidden = visible > 0;
+      });
+    }
+
+    function setBookingFilter(value) {
+      if (!['all', 'walkin', 'reserve', 'team'].includes(value)) return;
+      activeBookingFilter = value;
+      document.querySelectorAll('[data-filter]').forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.filter === value)));
+      applyFilter();
+    }
+
+    function toggleAnchor(key) {
+      const anchor = document.getElementById(key);
+      if (anchor?.tagName === 'DETAILS') anchor.open = !anchor.open;
+    }
+
+    function renderDay(day) {
+      if (!DAY_ORDER.includes(day)) return;
+      activeDay = day;
+      const anchors = anchorsForDay(day);
+      dayTitle.textContent = day;
+      anchorCount.textContent = `${anchors.length} 个行程点 · 每点 3 个候选`;
+      homestayNotice.hidden = !HOMESTAY_DAYS.has(day);
+      dateNav.replaceChildren(...DAY_ORDER.map((date) => {
+        const button = document.createElement('button');
+        button.type = 'button'; button.className = 'date-button'; button.textContent = date;
+        button.setAttribute('aria-current', date === day ? 'date' : 'false');
+        button.addEventListener('click', () => renderDay(date));
+        return button;
+      }));
+      previewRegion.replaceChildren(...renderPreviews(day));
+      anchorList.replaceChildren(...anchors.map(renderAnchor));
+      applyFilter();
+    }
+
+    filterRow.addEventListener('click', (event) => { const button = event.target.closest('[data-filter]'); if (button) setBookingFilter(button.dataset.filter); });
+    window.renderDay = renderDay;
+    window.setBookingFilter = setBookingFilter;
+    window.toggleAnchor = toggleAnchor;
+    window.renderPreviews = renderPreviews;
+    renderDay(activeDay);
+  </script>
+</body>
+</html>
